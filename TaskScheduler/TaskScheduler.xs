@@ -28,10 +28,10 @@ New(SV* self)
 #if TSK_DEBUG
 		printf("\t\tDEBUG: successfully initialized COM\n");
 #endif
-	    hr = CoCreateInstance( CLSID_CTaskScheduler,
+	    hr = CoCreateInstance( (CLSID*)&CLSID_CTaskScheduler,
 	                           NULL,
 	                           CLSCTX_INPROC_SERVER,
-	                           IID_ITaskScheduler,
+	                           (IID*)&IID_ITaskScheduler,
 	                           (void **) &taskSched );
 	    if( FAILED( hr ) )
 	    {
@@ -64,8 +64,8 @@ End(SV* self)
 
 	CODE:
 	DataFromBlessedHash(self,&taskSched,&activeTask);
-	if(activeTask != NULL) activeTask->Release();
-	if(taskSched != NULL) taskSched->Release();
+	if(activeTask != NULL) ITaskScheduler_Release(activeTask);
+	if(taskSched != NULL) ITask_Release(taskSched);
 	CoUninitialize();
 	DataToBlessedHash(self,NULL,NULL);
 
@@ -91,7 +91,7 @@ Enum(SV* self)
 			wprintf(L"Win32::TaskScheduler: fatal error: null pointer, call NEW()\n");
 			XSRETURN_UNDEF;
 			}
-		hr = taskSched->Enum(&pIEnum);
+		hr = ITaskScheduler_Enum(taskSched, &pIEnum);
 
 		if (FAILED(hr))
 		{
@@ -99,10 +99,7 @@ Enum(SV* self)
 		  XSRETURN_UNDEF;
 		}
 
-		while (SUCCEEDED(pIEnum->Next(TASKS_TO_RETRIEVE,
-									  &lpwszNames,
-									  &dwFetchedTasks))
-						&& (dwFetchedTasks != 0))
+		while (SUCCEEDED(IEnumWorkItems_Next(pIEnum, TASKS_TO_RETRIEVE,&lpwszNames,&dwFetchedTasks)) && (dwFetchedTasks != 0))
 		{
 		  while (dwFetchedTasks)
 		  {
@@ -113,7 +110,7 @@ Enum(SV* self)
 		  CoTaskMemFree(lpwszNames);
 		}
 
-		pIEnum->Release();
+		IEnumWorkItems_Release(pIEnum);
 
 
 int
@@ -131,12 +128,12 @@ Activate(SV* self,char *jobName)
 
 	if (activeTask != NULL)
 		{
-			activeTask->Release();
+			ITask_Release(activeTask);
 			activeTask=NULL;
 		}
 
 	tsk=_towchar(jobName,FALSE);
-	hr = taskSched->Activate(tsk,
+	hr = ITaskScheduler_Activate(taskSched, tsk,
                       	IID_ITask,
                       	(IUnknown**) &activeTask);
 
@@ -174,7 +171,7 @@ SetTargetComputer(SV* self,char* host)
 		}
 	hst=_towchar(host,FALSE);
 
-    hr = taskSched->SetTargetComputer(hst);
+    hr = ITaskScheduler_SetTargetComputer(taskSched, hst);
     if (FAILED(hr))
     {
 		RETVAL=0;
@@ -207,7 +204,7 @@ GetAccountInformation(SV* self)
 		XSRETURN_UNDEF;
 	}
 
-	hr = activeTask->GetAccountInformation(&usr);
+	hr = ITask_GetAccountInformation(activeTask, &usr);
 	if(SUCCEEDED(hr) && hr != SCHED_E_NO_SECURITY_SERVICES)
 	{
 		char *tmp=_tochar(usr,FALSE);
@@ -241,13 +238,13 @@ SetAccountInformation(SV* self,char* usr,char* pwd)
 	//Based on patch contributed by Andreas Hartmann
 	if ((strcmp (usr,"") == 0) && ( pwd == NULL || (strcmp (pwd,"") == 0)) )
 	{
-		hr = activeTask->SetAccountInformation(L"",NULL); // run as system-Account
+		hr = ITask_SetAccountInformation(activeTask, L"",NULL); // run as system-Account
 	}
 	else
 	{
 		user=_towchar(usr,FALSE);
 		password=_towchar(pwd,FALSE);
-		hr = activeTask->SetAccountInformation(user,password);
+		hr = ITask_SetAccountInformation(activeTask,user,password);
 	}
 	
 	switch(hr) {
@@ -280,11 +277,11 @@ Save(SV* self)
 		XSRETURN_IV(0);
 	}
 
-	hr = activeTask->QueryInterface(IID_IPersistFile,
+	hr = ITask_QueryInterface(activeTask, IID_IPersistFile,
 	                             	(void **)&pIPersistFile);
 	if(SUCCEEDED(hr))
 	{
-		hr = pIPersistFile->Save(NULL,
+		hr = IPersistFile_Save(pIPersistFile, NULL,
 	                             TRUE);
 		if(FAILED(hr))
 		{
@@ -292,12 +289,12 @@ Save(SV* self)
 		} else {
 			RETVAL=1;
 		}
-		pIPersistFile->Release();
+		IPersistFile_Release(pIPersistFile);
 	} else {
 		RETVAL=0;
 	}
 
-	activeTask->Release();
+	ITask_Release(activeTask);
 	activeTask=NULL;
 
 	DataToBlessedHash(self,taskSched,activeTask);
@@ -319,7 +316,7 @@ GetApplicationName(SV* self)
 
 	if (activeTask==NULL || taskSched == NULL) XSRETURN_UNDEF;
 
-	hr = activeTask->GetApplicationName(&ApplicationName);
+	hr = ITask_GetApplicationName(activeTask, &ApplicationName);
 
 	if (FAILED(hr)) XSRETURN_UNDEF;
 
@@ -356,7 +353,7 @@ SetApplicationName(SV* self,char* app)
 		XSRETURN_IV(0);
 	}
 
-	hr = activeTask->SetApplicationName(application);
+	hr = ITask_SetApplicationName(activeTask, application);
 
 	if(FAILED(hr))
 		RETVAL=0;
@@ -383,7 +380,7 @@ GetParameters(SV* self)
 		XSRETURN_UNDEF;
 	}
 
-	hr = activeTask->GetParameters(&Parameters);
+	hr = ITask_GetParameters(activeTask, &Parameters);
 	if(FAILED(hr)) XSRETURN_UNDEF;
 
 	char *tmp=_tochar(Parameters,FALSE);
@@ -412,7 +409,7 @@ SetParameters(SV* self,char* param)
 
 	Parameters=_towchar(param,FALSE);
 
-	hr = activeTask->SetParameters(Parameters);
+	hr = ITask_SetParameters(activeTask, Parameters);
 
 	if(FAILED(hr))
 		RETVAL=0;
@@ -438,7 +435,7 @@ GetWorkingDirectory(SV* self)
 		XSRETURN_UNDEF;
 	}
 
-	hr = activeTask->GetWorkingDirectory(&Directory);
+	hr = ITask_GetWorkingDirectory(activeTask, &Directory);
 	if(FAILED(hr)) XSRETURN_UNDEF;
 
 	char *tmp=_tochar(Directory,FALSE);
@@ -467,7 +464,7 @@ SetWorkingDirectory(SV* self,char* dir)
 
 	Directory=_towchar(dir,FALSE);
 
-	hr = activeTask->SetWorkingDirectory(Directory);
+	hr = ITask_SetWorkingDirectory(activeTask, Directory);
 
 	if(FAILED(hr))
 		RETVAL=0;
@@ -494,7 +491,7 @@ Delete(SV* self,char* jobname)
 	}
 
 	job=_towchar(jobname,FALSE);
-	hr=taskSched->Delete(job);
+	hr=ITaskScheduler_Delete(taskSched, job);
 	if(FAILED(hr))
 		RETVAL=0;
 	else RETVAL=1;
@@ -519,7 +516,7 @@ GetPriority(SV* self,SV* pri)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->GetPriority(&priority);
+	hr=ITask_GetPriority(activeTask, &priority);
 	if(FAILED(hr))
 		RETVAL=0;
 	else RETVAL=1;
@@ -545,7 +542,7 @@ SetPriority(SV* self,double pri)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->SetPriority((DWORD)pri);
+	hr=ITask_SetPriority(activeTask,(DWORD)pri);
 	if(FAILED(hr))
 		{
 		RETVAL=0;
@@ -590,13 +587,13 @@ NewWorkItem(SV* self,char* name,SV* strigger)
 
 	pwszTaskName=_towchar(name,FALSE);
 
-	if(activeTask!=NULL) { activeTask->Release(); activeTask=NULL; }
+	if(activeTask!=NULL) { ITask_Release(activeTask); activeTask=NULL; }
 
 ## we must save, otherwise if we had an error
 ## the hash woul still point to the old task, if any!
 	DataToBlessedHash(self,taskSched,activeTask);
 
-	hr = taskSched->NewWorkItem(pwszTaskName,
+	hr = ITaskScheduler_NewWorkItem(taskSched, pwszTaskName,
 	                       		CLSID_CTask,
 	                       		IID_ITask,
 	                       		(IUnknown**)&pITask);
@@ -618,7 +615,7 @@ NewWorkItem(SV* self,char* name,SV* strigger)
 		if(SvROK(strigger))
 			{
 ## create trigger object..
-			hr=activeTask->CreateTrigger(&piNewTrigger,&pITaskTrigger);
+			hr=ITask_CreateTrigger(activeTask,&piNewTrigger,&pITaskTrigger);
             if(FAILED(hr)) {XSRETURN_IV(0);}
             ZeroMemory(&pTrigger, sizeof(TASK_TRIGGER));
 
@@ -707,7 +704,7 @@ NewWorkItem(SV* self,char* name,SV* strigger)
 #if TSK_DEBUG
 		printf("\t\tDEBUG: successfully parsed hash into structure\n");
 #endif
-			hr = pITaskTrigger->SetTrigger(&pTrigger);
+			hr = ITaskTrigger_SetTrigger(pITaskTrigger, &pTrigger);
 			if(FAILED(hr))
 				{
 				RETVAL=-1;
@@ -716,7 +713,7 @@ NewWorkItem(SV* self,char* name,SV* strigger)
 #if TSK_DEBUG
 		printf("\t\tDEBUG: successfully called SetTrigger\n");
 #endif
-			pITaskTrigger->Release();
+			ITaskTrigger_Release(pITaskTrigger);
 			RETVAL=1;
 			DataToBlessedHash(self,taskSched,activeTask);
 #if TSK_DEBUG
@@ -743,7 +740,7 @@ GetTriggerCount(SV* self)
 		XSRETURN_IV(-1);
 	}
 
-	hr=activeTask->GetTriggerCount(&TriggerCount);
+	hr=ITask_GetTriggerCount(activeTask,&TriggerCount);
 	if(FAILED(hr))
 		RETVAL=-1;
 	else RETVAL=(int)TriggerCount;
@@ -769,7 +766,7 @@ GetTriggerString(SV* self,int TriggerIndex)
 		XSRETURN_NO;
 	}
 
-	hr=activeTask->GetTriggerString(TriggerIndex,&triggerStr);
+	hr=ITask_GetTriggerString(activeTask,TriggerIndex,&triggerStr);
 	if (FAILED(hr))
 		{
 			RETVAL="";
@@ -799,7 +796,7 @@ DeleteTrigger(SV* self,int triggerIndex)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->DeleteTrigger((WORD)triggerIndex);
+	hr=ITask_DeleteTrigger(activeTask,(WORD)triggerIndex);
 	if (FAILED(hr))
 		{
 			RETVAL=0;
@@ -833,7 +830,7 @@ GetTrigger(SV* self,int triggerIndex,SV* hashTrigger)
 		XSRETURN_IV(0);
 	}
 
-	hr = activeTask->GetTrigger(triggerIndex,&pITaskTrigger);
+	hr = ITask_GetTrigger(activeTask,triggerIndex,&pITaskTrigger);
 	if(FAILED(hr)) XSRETURN_IV(0);
 
 ## now we try to get the trigger structure from the TaskTrigger object
@@ -841,8 +838,8 @@ GetTrigger(SV* self,int triggerIndex,SV* hashTrigger)
 	ZeroMemory(&pTrigger, sizeof(TASK_TRIGGER));
 	pTrigger.cbTriggerSize = sizeof (TASK_TRIGGER);
 
-	hr = pITaskTrigger->GetTrigger(&pTrigger);
-	if(FAILED(hr)) { pITaskTrigger->Release(); XSRETURN_IV(0); }
+	hr = ITaskTrigger_GetTrigger(pITaskTrigger, &pTrigger);
+	if(FAILED(hr)) { ITaskTrigger_Release(pITaskTrigger); XSRETURN_IV(0); }
 
  	if ( SvROK(hashTrigger) && ( SvTYPE(SvRV(hashTrigger)) == SVt_PVHV ) )
  	{
@@ -871,7 +868,7 @@ GetTrigger(SV* self,int triggerIndex,SV* hashTrigger)
 													{
 													IntToHash(htmp,MY_DaysInterval,pTrigger.Type.Daily.DaysInterval);
 													}
-												if(HashToHash(hTrigger,MY_Type,htmp)==NULL) { pITaskTrigger->Release(); XSRETURN_NO; }
+												if(HashToHash(hTrigger,MY_Type,htmp)==NULL) { ITaskTrigger_Release(pITaskTrigger); XSRETURN_NO; }
 												break;
 											   }
 	case TASK_TIME_TRIGGER_WEEKLY            : {
@@ -881,7 +878,7 @@ GetTrigger(SV* self,int triggerIndex,SV* hashTrigger)
 													IntToHash(htmp,MY_WeeksInterval,pTrigger.Type.Weekly.WeeksInterval);
 													IntToHash(htmp,MY_DaysOfTheWeek,pTrigger.Type.Weekly.rgfDaysOfTheWeek);
 													}
-												if(HashToHash(hTrigger,MY_Type,htmp)==NULL) { pITaskTrigger->Release(); XSRETURN_NO; }
+												if(HashToHash(hTrigger,MY_Type,htmp)==NULL) { ITaskTrigger_Release(pITaskTrigger); XSRETURN_NO; }
 												break;
 											   }
 	case TASK_TIME_TRIGGER_MONTHLYDATE       : {
@@ -891,7 +888,7 @@ GetTrigger(SV* self,int triggerIndex,SV* hashTrigger)
 													IntToHash(htmp,MY_Days,bitFieldToHumanDays(pTrigger.Type.MonthlyDate.rgfDays));
 													IntToHash(htmp,MY_Months,pTrigger.Type.MonthlyDate.rgfMonths);
 													}
-												if(HashToHash(hTrigger,MY_Type,htmp)==NULL) { pITaskTrigger->Release(); XSRETURN_NO; }
+												if(HashToHash(hTrigger,MY_Type,htmp)==NULL) { ITaskTrigger_Release(pITaskTrigger); XSRETURN_NO; }
 												break;
 											   }
 	case TASK_TIME_TRIGGER_MONTHLYDOW        : {
@@ -902,7 +899,7 @@ GetTrigger(SV* self,int triggerIndex,SV* hashTrigger)
 													IntToHash(htmp,MY_DaysOfTheWeek,pTrigger.Type.MonthlyDOW.rgfDaysOfTheWeek);
 													IntToHash(htmp,MY_Months,pTrigger.Type.MonthlyDOW.rgfMonths);
 													}
-												if(HashToHash(hTrigger,MY_Type,htmp)==NULL) { pITaskTrigger->Release(); XSRETURN_NO; }
+												if(HashToHash(hTrigger,MY_Type,htmp)==NULL) { ITaskTrigger_Release(pITaskTrigger); XSRETURN_NO; }
 												break;
 											   }
 	case TASK_EVENT_TRIGGER_ON_IDLE          : { break; }
@@ -911,7 +908,7 @@ GetTrigger(SV* self,int triggerIndex,SV* hashTrigger)
 	default : { XSRETURN_IV(-1); }
 	}
 
-	pITaskTrigger->Release();
+	ITaskTrigger_Release(pITaskTrigger);
 	RETVAL=1;
 
 	OUTPUT:
@@ -937,7 +934,7 @@ int SetTrigger(SV* self,int triggerIndex, SV* strigger)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->GetTrigger(triggerIndex,&pITaskTrigger);
+	hr=ITask_GetTrigger(activeTask,triggerIndex,&pITaskTrigger);
 	if (FAILED(hr)) XSRETURN_IV(0);
 
 ## now load hash into TASK_TRIGGER structure
@@ -1007,13 +1004,13 @@ int SetTrigger(SV* self,int triggerIndex, SV* strigger)
 	case TASK_EVENT_TRIGGER_AT_SYSTEMSTART   : { break; }
 	default : { XSRETURN_IV(-1); }
 	}
-	hr = pITaskTrigger->SetTrigger(&pTrigger);
+	hr = ITaskTrigger_SetTrigger(pITaskTrigger, &pTrigger);
 	if(FAILED(hr))
 		{
 		XSRETURN_IV(0);
 		}
 
-	pITaskTrigger->Release();
+	ITaskTrigger_Release(pITaskTrigger);
 	RETVAL=1;
 
 	OUTPUT:
@@ -1041,7 +1038,7 @@ CreateTrigger(SV* self,SV* strigger)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->CreateTrigger(&triggerIndex,&pITaskTrigger);
+	hr=ITask_CreateTrigger(activeTask,&triggerIndex,&pITaskTrigger);
 	if (FAILED(hr)) XSRETURN_IV(0);
 
 ## now load hash into TASK_TRIGGER structure
@@ -1112,13 +1109,13 @@ CreateTrigger(SV* self,SV* strigger)
 	default : { XSRETURN_IV(-1); }
 	}
 
-	hr = pITaskTrigger->SetTrigger(&pTrigger);
+	hr = ITaskTrigger_SetTrigger(pITaskTrigger, &pTrigger);
 	if(FAILED(hr))
 		{
 		XSRETURN_IV(0);
 		}
 
-	pITaskTrigger->Release();
+	ITaskTrigger_Release(pITaskTrigger);
 	RETVAL=1;
 
 	OUTPUT:
@@ -1140,7 +1137,7 @@ SetFlags(SV* self,int flags)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->SetFlags((DWORD)flags);
+	hr=ITask_SetFlags(activeTask,(DWORD)flags);
 	if (FAILED(hr)) RETVAL=0;
 	else RETVAL=1;
 
@@ -1164,7 +1161,7 @@ GetFlags(SV* self)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->GetFlags(&flg);
+	hr=ITask_GetFlags(activeTask,&flg);
 	if (FAILED(hr)) RETVAL=0;
 	else RETVAL=flg;
 
@@ -1188,7 +1185,7 @@ GetExitCode(SV* self,SV* code)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->GetExitCode(&exCode);
+	hr=ITask_GetExitCode(activeTask,&exCode);
 	if(FAILED(hr))
 		RETVAL=0;
 	else RETVAL=1;
@@ -1214,7 +1211,7 @@ GetStatus(SV* self,SV* stat)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->GetStatus(&st);
+	hr=ITask_GetStatus(activeTask,&st);
 	if(FAILED(hr))
 		RETVAL=0;
 	else RETVAL=1;
@@ -1241,7 +1238,7 @@ GetNextRunTime(SV* self)
 		XSRETURN_UNDEF;
 	}
 
-	hr=activeTask->GetNextRunTime(&nextRun);
+	hr=ITask_GetNextRunTime(activeTask,&nextRun);
 	if(FAILED(hr)) { XSRETURN_UNDEF; }
 
 	PUSHs(sv_2mortal(newSViv(nextRun.wMilliseconds)));
@@ -1269,7 +1266,7 @@ Run(SV* self)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->Run();
+	hr=ITask_Run(activeTask);
 	if(FAILED(hr)) { RETVAL=0; }
 	else { RETVAL=1; }
 
@@ -1292,7 +1289,7 @@ Terminate(SV* self)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->Terminate();
+	hr=ITask_Terminate(activeTask);
 	if(FAILED(hr)) { RETVAL=0; }
 	else { RETVAL=1; }
 
@@ -1317,7 +1314,7 @@ SetComment(SV* self,char* comment)
 	}
 
 	com=_towchar(comment,FALSE);
-	hr=activeTask->SetComment(com);
+	hr=ITask_SetComment(activeTask,com);
 	if(FAILED(hr))
 		RETVAL=0;
 	else RETVAL=1;
@@ -1347,7 +1344,7 @@ GetComment(SV* self)
 		XSRETURN_UNDEF;
 	}
 
-	hr = activeTask->GetComment(&com);
+	hr = ITask_GetComment(activeTask,&com);
 	if(SUCCEEDED(hr))
 	{
 		char *tmp=_tochar(com,FALSE);
@@ -1376,7 +1373,7 @@ int GetMaxRunTime(SV* self)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->GetMaxRunTime(&maxRunTimeMilliSeconds);
+	hr=ITask_GetMaxRunTime(activeTask,&maxRunTimeMilliSeconds);
 	if(FAILED(hr)) {
 		RETVAL=0;
 #if TSK_DEBUG
@@ -1407,7 +1404,7 @@ int SetMaxRunTime(SV* self,int maxRunTimeMilliSeconds)
 		XSRETURN_IV(0);
 	}
 
-	hr=activeTask->SetMaxRunTime(maxRunTimeMilliSeconds);
+	hr=ITask_SetMaxRunTime(activeTask,maxRunTimeMilliSeconds);
 	if(FAILED(hr))
 		RETVAL=0;
 	else RETVAL=1;
@@ -1433,7 +1430,7 @@ SetCreator(SV* self,char* comment)
 	}
 
 	com=_towchar(comment,FALSE);
-	hr=activeTask->SetCreator(com);
+	hr=ITask_SetCreator(activeTask,com);
 	if(FAILED(hr))
 		RETVAL=0;
 	else RETVAL=1;
@@ -1463,7 +1460,7 @@ GetCreator(SV* self)
 		XSRETURN_UNDEF;
 	}
 
-	hr = activeTask->GetCreator(&com);
+	hr = ITask_GetCreator(activeTask,&com);
 	if(SUCCEEDED(hr))
 	{
 		char *tmp=_tochar(com,FALSE);
@@ -1493,7 +1490,7 @@ GetMostRecentRunTime(SV* self)
 		XSRETURN_UNDEF;
 	}
 
-	hr=activeTask->GetMostRecentRunTime (&lastRun);
+	hr=ITask_GetMostRecentRunTime (activeTask,&lastRun);
 	if(FAILED(hr)) { XSRETURN_UNDEF; }
 
 	PUSHs(sv_2mortal(newSViv(lastRun.wMilliseconds)));

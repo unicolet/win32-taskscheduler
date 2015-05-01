@@ -13,7 +13,7 @@
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSub.h>
-#include "TConvert.h"
+//#include "TConvert.h"
 #include "misc.h"
 
 #ifndef TASKSCHEDULER
@@ -224,3 +224,11 @@
 #define MY_WhichWeek_LEN 9
 
 #endif
+
+char* _tochar(LPCWSTR wszText, BOOL dontcare) {
+	return (char*) wszText;
+}
+
+LPCWSTR _towchar(char* wszText, BOOL dontcare) {
+	return (LPCWSTR) wszText;
+}
