@@ -133,9 +133,7 @@ Activate(SV* self,char *jobName)
 		}
 
 	tsk=_towchar(jobName,FALSE);
-	hr = ITaskScheduler_Activate(taskSched, tsk,
-                      	IID_ITask,
-                      	(IUnknown**) &activeTask);
+	hr = ITaskScheduler_Activate(taskSched, tsk, &IID_ITask, (IUnknown**) &activeTask);
 
 	if (FAILED(hr))
 	{
@@ -277,8 +275,7 @@ Save(SV* self)
 		XSRETURN_IV(0);
 	}
 
-	hr = ITask_QueryInterface(activeTask, IID_IPersistFile,
-	                             	(void **)&pIPersistFile);
+	hr = ITask_QueryInterface(activeTask, &IID_IPersistFile,(void **)&pIPersistFile);
 	if(SUCCEEDED(hr))
 	{
 		hr = IPersistFile_Save(pIPersistFile, NULL,
@@ -593,10 +590,7 @@ NewWorkItem(SV* self,char* name,SV* strigger)
 ## the hash woul still point to the old task, if any!
 	DataToBlessedHash(self,taskSched,activeTask);
 
-	hr = ITaskScheduler_NewWorkItem(taskSched, pwszTaskName,
-	                       		CLSID_CTask,
-	                       		IID_ITask,
-	                       		(IUnknown**)&pITask);
+	hr = ITaskScheduler_NewWorkItem(taskSched, pwszTaskName,&CLSID_CTask,&IID_ITask,(IUnknown**)&pITask);
 
 	if(FAILED(hr))
 		{

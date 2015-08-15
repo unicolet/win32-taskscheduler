@@ -62,7 +62,7 @@ $tsk="alfred";
 foreach $k (keys %trig) {print "$k=" . $trig{$k} . "\n";}
 
 print $scheduler->NewWorkItem($tsk,\%trig);
-print $scheduler->SetApplicationName("winword.exe");
+print $scheduler->SetApplicationName("notepad.exe");
 
 print $scheduler->Save();
 $scheduler->Activate($tsk);
