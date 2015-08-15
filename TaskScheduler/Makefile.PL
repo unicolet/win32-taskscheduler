@@ -2,12 +2,12 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile(
     'NAME'		=> 'Win32::TaskScheduler',
-    'VERSION_FROM'	=> 'TaskScheduler.pm', # finds $VERSION
+    'VERSION_FROM'	=> 'TaskScheduler.pm',
     'PREREQ_PM'		=> {},
     ($] >= 5.005 ?    
       (ABSTRACT_FROM => 'TaskScheduler.pm', 
        AUTHOR     => 'Umberto Nicoletti <unicolet@netscape.net>') : ()),
-    'LIBS'		=> ['-L"C:\Program Files\mingw-w64\x86_64-4.9.2-win32-seh-rt_v4-rev2\mingw64\x86_64-w64-mingw32\lib"'], 
-    'DEFINE'		=> '', # -TP tells cl to compile all as c++
-    'INC'		=> '', # e.g., '-I/usr/include/other'
+    'LIBS'		=> [' -L"C:/Program Files (x86)/Windows Kits/8.1/Lib/winv6.3/um/x86" -lmstask -luuid'], 
+    'DEFINE'		=> '', 
+    'INC'		=> '', 
 );

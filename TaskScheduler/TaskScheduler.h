@@ -1,3 +1,5 @@
+#define COBJMACROS 1
+
 //standard MS headers
 #include <windows.h>
 #include <ole2.h>

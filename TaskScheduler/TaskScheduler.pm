@@ -25,7 +25,7 @@ our @EXPORT = qw(
 	
 );
 
-our $VERSION = '2.0.3b';
+our $VERSION = '2.0.4';
 
 #variables exported to user scope
 use constant TASK_SUNDAY=>1;
