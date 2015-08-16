@@ -40,9 +40,12 @@ New(SV* self)
 #if TSK_DEBUG
 		printf("\t\tDEBUG: Successfully initialized taskSched: %d\n",taskSched);
 #endif
-		if(DataToBlessedHash(newRV_noinc((SV*)b_hash),taskSched,activeTask))
+		/* Create a reference to the hash */
+        SV *const new_self = newRV_noinc( (SV *) b_hash );
+		if(DataToBlessedHash(new_self,taskSched,activeTask))
 			{
-			pSvBlessed = sv_bless( newRV_noinc( (SV*) b_hash ), gv_stashpv( "Win32::TaskScheduler", TRUE ) );
+
+			pSvBlessed = sv_bless( new_self , gv_stashpv( "Win32::TaskScheduler", TRUE ) );
 
 			RETVAL=pSvBlessed;
 #if TSK_DEBUG
@@ -137,13 +140,20 @@ Activate(SV* self,char *jobName)
 
 	if (FAILED(hr))
 	{
+		#if TSK_DEBUG
+		printf("\t\tDEBUG: Activate failed\n");
+		#endif
+
 		activeTask=NULL;
 		RETVAL=0;
 	} else {
+		#if TSK_DEBUG
+		printf("\t\tDEBUG: Activate success\n");
+		#endif
 		RETVAL=1;
 	}
 
-## save pointer info to blessed hash
+    ## save pointer info to blessed hash
 	DataToBlessedHash(self,taskSched,activeTask);
 
 	OUTPUT:

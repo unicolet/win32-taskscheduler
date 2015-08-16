@@ -18,7 +18,10 @@ $taskMGR2 = Win32::TaskScheduler->New();
 ok(1);
 
 @a = $taskMGR1->Enum();
-foreach $tsk (@a) { print "$tsk\n";}
+foreach $tsk (@a) { print "1. Found task: $tsk\n";}
+
+@a = $taskMGR2->Enum();
+foreach $tsk (@a) { print "2. Found task: $tsk\n";}
 ok(1);
 
 #########################
@@ -33,11 +36,11 @@ ok(1);
 
 #########################
 
-print "---using taskMGR1---\n";
+print "---GetWorkingDirectory using taskMGR1---\n";
 print "$tsk1 is working in " . $taskMGR1->GetWorkingDirectory() . ".\n";
 for(my $i=0;$i<$taskMGR1->GetTriggerCount();$i++)
 	{ print "$tsk1 ($i) scheduled at " . $taskMGR1->GetTriggerString($i) . "\n"; }
-print "---using taskMGR2---\n";
+print "---GetWorkingDirectory using taskMGR2---\n";
 print "$tsk2 is working in " . $taskMGR2->GetWorkingDirectory() . ".\n";
 for(my $i=0;$i<$taskMGR2->GetTriggerCount();$i++)
 	{ print "$tsk2 ($i) scheduled at " . $taskMGR2->GetTriggerString($i) . "\n"; }
@@ -45,7 +48,7 @@ ok(1);
 
 #########################
 
-print "\n\n---using taskMGR1---\n";
+print "\n\n---GetTriggerCount using taskMGR1---\n";
 @a = $taskMGR1->Enum();
 foreach my $tsk (@a) { 
 $taskMGR1->Activate($tsk);

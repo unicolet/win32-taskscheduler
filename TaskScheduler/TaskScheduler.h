@@ -1,5 +1,8 @@
 #define COBJMACROS 1
 
+// set to 1 to enable debugging information
+#define TSK_DEBUG 0
+
 //standard MS headers
 #include <windows.h>
 #include <ole2.h>
@@ -24,10 +27,7 @@
 #define TASKS_TO_RETRIEVE     5
 #define TOTAL_RUN_TIME_TO_FETCH     10
 
-// set to 1 to enable debugging information
-#define TSK_DEBUG 0
-
-// define some hanby stuff for working with
+// define some handy stuff for working with
 // triggers
 
 #define MY_TASK_SUNDAY "TASK_SUNDAY"
@@ -228,9 +228,9 @@
 #endif
 
 char* _tochar(LPCWSTR wszText, BOOL dontcare) {
-	return (char*) wszText;
+	return (char*)wszText;
 }
 
 LPCWSTR _towchar(char* wszText, BOOL dontcare) {
-	return (LPCWSTR) wszText;
+	return (LPCWSTR)wszText;
 }
