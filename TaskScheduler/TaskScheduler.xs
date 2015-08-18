@@ -140,16 +140,9 @@ Activate(SV* self,char *jobName)
 
 	if (FAILED(hr))
 	{
-		#if TSK_DEBUG
-		printf("\t\tDEBUG: Activate failed\n");
-		#endif
-
 		activeTask=NULL;
 		RETVAL=0;
 	} else {
-		#if TSK_DEBUG
-		printf("\t\tDEBUG: Activate success\n");
-		#endif
 		RETVAL=1;
 	}
 
