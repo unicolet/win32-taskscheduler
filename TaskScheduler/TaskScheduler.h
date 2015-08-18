@@ -228,9 +228,15 @@
 #endif
 
 char* _tochar(LPCWSTR wszText, BOOL dontcare) {
-	return (char*)wszText;
+	int len = wcslen(wszText) + 1;
+	char* text = (char *)malloc(len * sizeof(CHAR));
+	wcstombs(text, wszText, len);
+	return text;
 }
 
-LPCWSTR _towchar(char* wszText, BOOL dontcare) {
-	return (LPCWSTR)wszText;
+LPCWSTR _towchar(char* text, BOOL dontcare) {
+	int len = strlen(text) + 1;
+	LPWSTR wText = (LPWSTR)malloc(len * sizeof(WCHAR));
+	mbstowcs(wText , text, len);
+	return wText;
 }
